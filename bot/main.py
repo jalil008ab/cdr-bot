@@ -83,7 +83,8 @@ def create_app(settings: Settings, *, register_webhook: bool = True) -> web.Appl
         db.close()
 
     async def health(_: web.Request) -> web.Response:
-        return web.json_response({"ok": True})
+        routes = [f"{r.method} {r.resource.canonical}" for r in app.router.routes()]
+        return web.json_response({"ok": True, "routes": routes, "webhook_path": settings.webhook_path})
 
     app = web.Application(client_max_size=1_000_000)  # Telegram update'lari kichik
     app.router.add_get("/healthz", health)
