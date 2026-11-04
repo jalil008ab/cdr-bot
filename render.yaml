@@ -5,6 +5,7 @@ services:
     dockerfilePath: ./Dockerfile
     plan: free
     region: frankfurt
+    autoDeploy: true
     healthCheckPath: /healthz
     envVars:
       - key: BOT_TOKEN
