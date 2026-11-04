@@ -1,0 +1,25 @@
+# Sirlar: HECH QACHON gitga tushmasin
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python / test
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# Ma'lumotlar
+data/
+*.db
+*.db-wal
+*.db-shm
+.tunnel.log
+.tunnel.pid
+.launchagent-stdout.log
+.launchagent-stderr.log
+.watchdog.pid
+.watchdog.log

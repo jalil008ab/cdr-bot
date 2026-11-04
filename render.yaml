@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: cdr-bot
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: frankfurt
+    healthCheckPath: /healthz
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: WEBHOOK_SECRET
+        sync: false
+      - key: WORKER_TOKEN
+        sync: false
+      - key: DATA_KEY
+        sync: false
+      - key: ADMIN_IDS
+        sync: false
+      - key: WEBHOOK_BASE_URL
+        sync: false

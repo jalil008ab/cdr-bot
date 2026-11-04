@@ -1,0 +1,13 @@
+# Avtomatik HTTPS (Let's Encrypt). Faqat webhook yo'li proksilanadi, qolgan hammasi 404.
+{$DOMAIN} {
+	encode zstd gzip
+	handle /webhook/* {
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy bot:8080
+	}
+	handle {
+		respond "Not found" 404
+	}
+}
