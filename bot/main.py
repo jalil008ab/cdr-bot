@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 import socket
 import sys
@@ -59,11 +60,11 @@ def create_app(settings: Settings, *, register_webhook: bool = True) -> web.Appl
                         url=settings.webhook_url,
                         secret_token=settings.webhook_secret,
                         allowed_updates=["message"],
-                        drop_pending_updates=True,
+                        drop_pending_updates=False,
                         max_connections=20,
                         ip_address=ip_addr,
                     )
-                    log.info("webhook_set_ok", extra={"attempt": attempt, "has_ip": bool(ip_addr)})
+                    log.info("webhook_set_ok", extra={"attempt": attempt, "has_ip": bool(ip_addr), "url": settings.webhook_url})
                     break
                 except Exception as exc:  # noqa: BLE001
                     if attempt == 5:
@@ -74,7 +75,7 @@ def create_app(settings: Settings, *, register_webhook: bool = True) -> web.Appl
 
         purged = await asyncio.to_thread(db.purge_old, settings.retention_days)
         app[PURGE_TASK] = asyncio.create_task(_purge_loop(db, settings.retention_days))
-        log.info("startup", extra={"webhook_path": "/webhook/***", "purged_jobs": purged})
+        log.info("startup", extra={"webhook_path": settings.webhook_path, "purged_jobs": purged})
 
     async def on_cleanup(app: web.Application) -> None:
         app[PURGE_TASK].cancel()
@@ -86,7 +87,10 @@ def create_app(settings: Settings, *, register_webhook: bool = True) -> web.Appl
 
     app = web.Application(client_max_size=1_000_000)  # Telegram update'lari kichik
     app.router.add_get("/healthz", health)
-    SimpleRequestHandler(dispatcher=dp, bot=bot, secret_token=settings.webhook_secret).register(app, path=settings.webhook_path)
+    handler = SimpleRequestHandler(dispatcher=dp, bot=bot, secret_token=settings.webhook_secret)
+    handler.register(app, path="/webhook")
+    legacy_path = "/webhook/" + hashlib.sha256(settings.webhook_secret.encode()).hexdigest()[:24]
+    handler.register(app, path=legacy_path)
     setup_application(app, dp, bot=bot)
     app.on_startup.append(on_startup)
     app.on_cleanup.append(on_cleanup)

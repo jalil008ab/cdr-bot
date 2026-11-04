@@ -40,8 +40,7 @@ class Settings:
 
     @property
     def webhook_path(self) -> str:
-        # Yo'l sirdan hosil qilinadi: taxmin qilib bo'lmaydi (secret_token'ga qo'shimcha qatlam)
-        return "/webhook/" + hashlib.sha256(self.webhook_secret.encode()).hexdigest()[:24]
+        return "/webhook"
 
     @property
     def webhook_url(self) -> str:
