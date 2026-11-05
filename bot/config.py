@@ -77,9 +77,10 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
     if not _TOKEN_RE.match(token):
         raise ConfigError("BOT_TOKEN formati noto'g'ri")
 
-    base = need("WEBHOOK_BASE_URL").rstrip("/")
-    if not base.startswith("https://"):
-        raise ConfigError("WEBHOOK_BASE_URL https:// bilan boshlanishi shart (polling taqiqlangan)")
+    # Render.com avtomatik ravishda RENDER_EXTERNAL_URL beradi (masalan: https://cdr-bot-xxxx.onrender.com)
+    base = (env.get("RENDER_EXTERNAL_URL") or env.get("WEBHOOK_BASE_URL", "")).strip().rstrip("/")
+    if not base or not base.startswith("https://"):
+        raise ConfigError("WEBHOOK_BASE_URL (yoki RENDER_EXTERNAL_URL) https:// bilan boshlanishi shart (polling taqiqlangan)")
 
     secret = need("WEBHOOK_SECRET")
     if not _SECRET_RE.match(secret):

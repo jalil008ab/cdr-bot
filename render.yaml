@@ -15,18 +15,6 @@ services:
     envVars:
       - key: PORT
         value: "8080"
-      - key: BOT_TOKEN
-        sync: false        # Dashboard'da qo'lda kiritiladi
-      - key: WEBHOOK_BASE_URL
-        sync: false
-      - key: WEBHOOK_SECRET
-        sync: false
-      - key: WORKER_TOKEN
-        sync: false
-      - key: DATA_KEY
-        sync: false
-      - key: ADMIN_IDS
-        sync: false
       - key: WORKER_URL
         value: http://127.0.0.1:8081
       - key: DB_PATH
@@ -35,3 +23,13 @@ services:
         value: "350"
       - key: WORKER_CONCURRENCY
         value: "1"
+      - key: WEBHOOK_SECRET
+        value: OQDgEKlP6t6maNU0esbH7ujkhkwusZApoxZUy-MujJM
+      - key: WORKER_TOKEN
+        value: Mqm7Tj7-EMYHlxH2IJaVjTVAp1FTqh4cf8OsB0ClTGM
+      - key: DATA_KEY
+        value: K7JwyzyKG2AGiqrmUfPtM_K9nFTYfPqETw75gB05dUA=
+      - key: BOT_TOKEN
+        sync: false        # Dashboard'da faqat shu 2 tasi qoladi
+      - key: ADMIN_IDS
+        sync: false
