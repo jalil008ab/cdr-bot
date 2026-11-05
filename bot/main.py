@@ -2,12 +2,10 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import logging
-import socket
 import sys
-import urllib.parse
 
+import aiohttp
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.types import ErrorEvent
@@ -24,6 +22,23 @@ log = logging.getLogger("bot")
 PURGE_TASK = web.AppKey("purge_task", asyncio.Task)
 
 
+async def _wait_for_worker(worker_url: str, retries: int = 15, delay: float = 2.0) -> None:
+    """Worker tayyor bo'lguncha kutadi (bitta konteynerda supervisord bilan kerak)."""
+    health_url = worker_url + "/healthz"
+    for attempt in range(retries):
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(health_url, timeout=aiohttp.ClientTimeout(total=3)) as resp:
+                    if resp.status == 200:
+                        log.info("worker_ready", extra={"attempt": attempt + 1})
+                        return
+        except Exception:  # noqa: BLE001
+            pass
+        log.info("waiting_for_worker", extra={"attempt": attempt + 1, "delay": delay})
+        await asyncio.sleep(delay)
+    raise RuntimeError(f"Worker {worker_url} {retries} urinishdan keyin ham tayyor bo'lmadi")
+
+
 def create_app(settings: Settings, *, register_webhook: bool = True) -> web.Application:
     bot = Bot(settings.bot_token, default=DefaultBotProperties(parse_mode=None, link_preview_is_disabled=True))
     db = Database(settings.db_path, settings.data_key)
@@ -34,7 +49,6 @@ def create_app(settings: Settings, *, register_webhook: bool = True) -> web.Appl
 
     @dp.errors()
     async def on_error(event: ErrorEvent) -> bool:
-        # Foydalanuvchiga faqat umumiy xabar; tafsilot faqat logga
         log.error("unhandled_error", exc_info=event.exception)
         msg = event.update.message
         if msg is not None:
@@ -45,37 +59,19 @@ def create_app(settings: Settings, *, register_webhook: bool = True) -> web.Appl
         return True
 
     async def on_startup(app: web.Application) -> None:
+        # Worker tayyor bo'lishini kutamiz (bitta konteynerda supervisord bilan ishlaydi)
+        await _wait_for_worker(settings.worker_url)
         if register_webhook:
-            ip_addr: str | None = None
-            try:
-                host = urllib.parse.urlsplit(settings.webhook_base_url).hostname
-                if host:
-                    ip_addr = await asyncio.to_thread(socket.gethostbyname, host)
-            except Exception:  # noqa: BLE001
-                ip_addr = None
-
-            for attempt in range(1, 6):
-                try:
-                    await bot.set_webhook(
-                        url=settings.webhook_url,
-                        secret_token=settings.webhook_secret,
-                        allowed_updates=["message"],
-                        drop_pending_updates=False,
-                        max_connections=20,
-                        ip_address=ip_addr,
-                    )
-                    log.info("webhook_set_ok", extra={"attempt": attempt, "has_ip": bool(ip_addr), "url": settings.webhook_url})
-                    break
-                except Exception as exc:  # noqa: BLE001
-                    if attempt == 5:
-                        log.error("set_webhook_failed_final", exc_info=exc)
-                        raise
-                    log.warning("set_webhook_retry", extra={"attempt": attempt, "error": str(exc)})
-                    await asyncio.sleep(3)
-
+            await bot.set_webhook(
+                url=settings.webhook_url,
+                secret_token=settings.webhook_secret,
+                allowed_updates=["message"],
+                drop_pending_updates=True,
+                max_connections=20,
+            )
         purged = await asyncio.to_thread(db.purge_old, settings.retention_days)
         app[PURGE_TASK] = asyncio.create_task(_purge_loop(db, settings.retention_days))
-        log.info("startup", extra={"webhook_path": settings.webhook_path, "purged_jobs": purged})
+        log.info("startup", extra={"webhook_path": "/webhook/***", "purged_jobs": purged})
 
     async def on_cleanup(app: web.Application) -> None:
         app[PURGE_TASK].cancel()
@@ -83,15 +79,11 @@ def create_app(settings: Settings, *, register_webhook: bool = True) -> web.Appl
         db.close()
 
     async def health(_: web.Request) -> web.Response:
-        routes = [f"{r.method} {r.resource.canonical}" for r in app.router.routes()]
-        return web.json_response({"ok": True, "routes": routes, "webhook_path": settings.webhook_path})
+        return web.json_response({"ok": True})
 
-    app = web.Application(client_max_size=1_000_000)  # Telegram update'lari kichik
+    app = web.Application(client_max_size=1_000_000)
     app.router.add_get("/healthz", health)
-    handler = SimpleRequestHandler(dispatcher=dp, bot=bot, secret_token=settings.webhook_secret)
-    handler.register(app, path="/webhook")
-    legacy_path = "/webhook/" + hashlib.sha256(settings.webhook_secret.encode()).hexdigest()[:24]
-    handler.register(app, path=legacy_path)
+    SimpleRequestHandler(dispatcher=dp, bot=bot, secret_token=settings.webhook_secret).register(app, path=settings.webhook_path)
     setup_application(app, dp, bot=bot)
     app.on_startup.append(on_startup)
     app.on_cleanup.append(on_cleanup)

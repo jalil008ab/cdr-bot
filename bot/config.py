@@ -40,7 +40,8 @@ class Settings:
 
     @property
     def webhook_path(self) -> str:
-        return "/webhook"
+        # Yo'l sirdan hosil qilinadi: taxmin qilib bo'lmaydi (secret_token'ga qo'shimcha qatlam)
+        return "/webhook/" + hashlib.sha256(self.webhook_secret.encode()).hexdigest()[:24]
 
     @property
     def webhook_url(self) -> str:
@@ -76,10 +77,9 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
     if not _TOKEN_RE.match(token):
         raise ConfigError("BOT_TOKEN formati noto'g'ri")
 
-    # Render.com avtomatik ravishda RENDER_EXTERNAL_URL beradi (masalan: https://cdr-bot-4tz4.onrender.com)
-    base = (env.get("RENDER_EXTERNAL_URL") or env.get("WEBHOOK_BASE_URL", "")).strip().rstrip("/")
-    if not base or not base.startswith("https://"):
-        raise ConfigError("WEBHOOK_BASE_URL (yoki RENDER_EXTERNAL_URL) https:// bilan boshlanishi shart (polling taqiqlangan)")
+    base = need("WEBHOOK_BASE_URL").rstrip("/")
+    if not base.startswith("https://"):
+        raise ConfigError("WEBHOOK_BASE_URL https:// bilan boshlanishi shart (polling taqiqlangan)")
 
     secret = need("WEBHOOK_SECRET")
     if not _SECRET_RE.match(secret):
@@ -110,7 +110,7 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         bot_token=token,
         webhook_base_url=base,
         webhook_secret=secret,
-        worker_url=env.get("WORKER_URL", "http://worker:8081").rstrip("/"),
+        worker_url=env.get("WORKER_URL", "http://127.0.0.1:8081").rstrip("/"),
         worker_token=worker_token,
         data_key=key,
         admin_ids=frozenset(admins),

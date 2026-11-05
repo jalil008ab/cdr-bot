@@ -1,14 +1,23 @@
+# Render Blueprint - https://render.com/docs/blueprint-spec
+# Dashboard -> New -> Blueprint -> bu faylni topadi
 services:
   - type: web
     name: cdr-bot
     runtime: docker
-    dockerfilePath: ./Dockerfile
-    plan: free
-    region: frankfurt
-    autoDeploy: true
+    dockerfilePath: ./docker/Dockerfile.combined
+    dockerContext: .
+    plan: starter          # DIQQAT: Free planda disk ishlamaydi. Free uchun 'disk' bo'limini olib tashlang.
     healthCheckPath: /healthz
+    disk:
+      name: bot-data
+      mountPath: /data
+      sizeGB: 1
     envVars:
+      - key: PORT
+        value: "8080"
       - key: BOT_TOKEN
+        sync: false        # Dashboard'da qo'lda kiritiladi
+      - key: WEBHOOK_BASE_URL
         sync: false
       - key: WEBHOOK_SECRET
         sync: false
@@ -18,5 +27,11 @@ services:
         sync: false
       - key: ADMIN_IDS
         sync: false
-      - key: WEBHOOK_BASE_URL
-        value: https://cdr-bot-4tz4.onrender.com
+      - key: WORKER_URL
+        value: http://127.0.0.1:8081
+      - key: DB_PATH
+        value: /data/bot.db
+      - key: JOB_MEM_MB
+        value: "350"
+      - key: WORKER_CONCURRENCY
+        value: "1"

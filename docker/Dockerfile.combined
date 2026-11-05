@@ -1,0 +1,33 @@
+# Render.com uchun: bot + worker bitta konteynerda
+# Ikkala requirements ham o'rnatiladi, supervisord ularni ishga tushiradi
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# supervisord - ikkala jarayonni boshqarish uchun
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    supervisor \
+    && rm -rf /var/lib/apt/lists/*
+
+# /data papkasi (SQLite uchun)
+RUN mkdir -p /data
+
+WORKDIR /app
+
+# Ikkala requirements ham o'rnatiladi
+COPY requirements-bot.txt requirements-worker.txt ./
+RUN pip install -r requirements-bot.txt -r requirements-worker.txt
+
+# Kod nusxalanadi
+COPY bot ./bot
+COPY worker ./worker
+
+# supervisord konfiguratsiyasi
+COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+EXPOSE 8080
+
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
