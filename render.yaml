@@ -6,12 +6,8 @@ services:
     runtime: docker
     dockerfilePath: ./docker/Dockerfile.combined
     dockerContext: .
-    plan: starter          # DIQQAT: Free planda disk ishlamaydi. Free uchun 'disk' bo'limini olib tashlang.
+    plan: free             # 100% BEPUL PLAN (karta yoki payment so'ramaydi)
     healthCheckPath: /healthz
-    disk:
-      name: bot-data
-      mountPath: /data
-      sizeGB: 1
     envVars:
       - key: PORT
         value: "8080"
