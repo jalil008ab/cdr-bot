@@ -30,6 +30,6 @@ services:
       - key: DATA_KEY
         value: K7JwyzyKG2AGiqrmUfPtM_K9nFTYfPqETw75gB05dUA=
       - key: BOT_TOKEN
-        sync: false        # Dashboard'da faqat shu 2 tasi qoladi
+        value: 9295721817:AAE5NkyeUUtQNnwLcqt-9z-efIOElyg6g68
       - key: ADMIN_IDS
-        sync: false
+        value: "5043502812"
